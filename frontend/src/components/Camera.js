@@ -8,7 +8,7 @@ export default class Camera extends PerspectiveCamera {
         this.width = width
         this.height = height
 
-        this.position.set(0, 100, -100)
+        this.position.set(0, 50, -50)
         this.lookAt(0, 0, 0)
 
         this.updateSize();

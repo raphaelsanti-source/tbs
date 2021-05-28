@@ -1,25 +1,68 @@
 <!DOCTYPE html>
 <html lang="pl">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Twój tytuł</title>
-    <style>
-      body{
-        padding: 0;
-        margin: 0 auto;
-      }
-      #info {
-        position: absolute;
-        top: 200px;
-        left: 200px;
-        max-width: 40%;
-        border: 1px solid black;
-      }
-    </style>
-<script defer src="index.js?0157d27cdf67b76ec8ca"></script></head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>
+    Twój tytuł
+  </title>
+  <style>
+    body {
+      font-family: 'Open Sans', sans-serif;
+      padding: 0;
+      margin: 0 auto;
+    }
+
+    #info {
+      position: absolute;
+      top: 200px;
+      left: 200px;
+      max-width: 40%;
+      border: 1px solid black;
+    }
+
+    #panel {
+      position: absolute;
+      bottom: 0;
+      width: 100vw;
+      height: 25vh;
+      background-color: gray;
+    }
+
+    .console {
+      display: flex;
+      flex-direction: row;
+      height: 100%;
+      width: 100%;
+    }
+
+    .unit {
+      width: 20%;
+      height: calc(100%-20px);
+      background-color: green;
+      margin: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+  </style>
+<script defer src="index.js?ce5c82fa725a85f91f69"></script></head>
+
 <body>
   <div id="root"></div>
-   <div id="info"></div>
+  <div id="panel">
+    <div class="console">
+      <div class="unit">
+        <h3 id="currentName"></h3>
+      </div>
+      <div id="options">
+
+      </div>
+      <div class="place"></div>
+    </div>
+  </div>
 </body>
+
 </html>

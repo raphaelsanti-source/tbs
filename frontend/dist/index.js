@@ -55482,6 +55482,595 @@ var FBXLoader = ( function () {
 
 /***/ }),
 
+/***/ "./node_modules/three/examples/jsm/loaders/TGALoader.js":
+/*!**************************************************************!*\
+  !*** ./node_modules/three/examples/jsm/loaders/TGALoader.js ***!
+  \**************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "TGALoader": () => (/* binding */ TGALoader)
+/* harmony export */ });
+/* harmony import */ var _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../../../build/three.module.js */ "./node_modules/three/build/three.module.js");
+
+
+var TGALoader = function ( manager ) {
+
+	_build_three_module_js__WEBPACK_IMPORTED_MODULE_0__.Loader.call( this, manager );
+
+};
+
+TGALoader.prototype = Object.assign( Object.create( _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__.Loader.prototype ), {
+
+	constructor: TGALoader,
+
+	load: function ( url, onLoad, onProgress, onError ) {
+
+		var scope = this;
+
+		var texture = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__.Texture();
+
+		var loader = new _build_three_module_js__WEBPACK_IMPORTED_MODULE_0__.FileLoader( this.manager );
+		loader.setResponseType( 'arraybuffer' );
+		loader.setPath( this.path );
+		loader.setWithCredentials( this.withCredentials );
+
+		loader.load( url, function ( buffer ) {
+
+			texture.image = scope.parse( buffer );
+			texture.needsUpdate = true;
+
+			if ( onLoad !== undefined ) {
+
+				onLoad( texture );
+
+			}
+
+		}, onProgress, onError );
+
+		return texture;
+
+	},
+
+	parse: function ( buffer ) {
+
+		// reference from vthibault, https://github.com/vthibault/roBrowser/blob/master/src/Loaders/Targa.js
+
+		function tgaCheckHeader( header ) {
+
+			switch ( header.image_type ) {
+
+				// check indexed type
+
+				case TGA_TYPE_INDEXED:
+				case TGA_TYPE_RLE_INDEXED:
+					if ( header.colormap_length > 256 || header.colormap_size !== 24 || header.colormap_type !== 1 ) {
+
+						console.error( 'THREE.TGALoader: Invalid type colormap data for indexed type.' );
+
+					}
+
+					break;
+
+					// check colormap type
+
+				case TGA_TYPE_RGB:
+				case TGA_TYPE_GREY:
+				case TGA_TYPE_RLE_RGB:
+				case TGA_TYPE_RLE_GREY:
+					if ( header.colormap_type ) {
+
+						console.error( 'THREE.TGALoader: Invalid type colormap data for colormap type.' );
+
+					}
+
+					break;
+
+					// What the need of a file without data ?
+
+				case TGA_TYPE_NO_DATA:
+					console.error( 'THREE.TGALoader: No data.' );
+
+					// Invalid type ?
+
+				default:
+					console.error( 'THREE.TGALoader: Invalid type "%s".', header.image_type );
+
+			}
+
+			// check image width and height
+
+			if ( header.width <= 0 || header.height <= 0 ) {
+
+				console.error( 'THREE.TGALoader: Invalid image size.' );
+
+			}
+
+			// check image pixel size
+
+			if ( header.pixel_size !== 8 && header.pixel_size !== 16 &&
+				header.pixel_size !== 24 && header.pixel_size !== 32 ) {
+
+				console.error( 'THREE.TGALoader: Invalid pixel size "%s".', header.pixel_size );
+
+			}
+
+		}
+
+		// parse tga image buffer
+
+		function tgaParse( use_rle, use_pal, header, offset, data ) {
+
+			var pixel_data,
+				pixel_size,
+				pixel_total,
+				palettes;
+
+			pixel_size = header.pixel_size >> 3;
+			pixel_total = header.width * header.height * pixel_size;
+
+			 // read palettes
+
+			 if ( use_pal ) {
+
+				 palettes = data.subarray( offset, offset += header.colormap_length * ( header.colormap_size >> 3 ) );
+
+			 }
+
+			 // read RLE
+
+			 if ( use_rle ) {
+
+				 pixel_data = new Uint8Array( pixel_total );
+
+				var c, count, i;
+				var shift = 0;
+				var pixels = new Uint8Array( pixel_size );
+
+				while ( shift < pixel_total ) {
+
+					c = data[ offset ++ ];
+					count = ( c & 0x7f ) + 1;
+
+					// RLE pixels
+
+					if ( c & 0x80 ) {
+
+						// bind pixel tmp array
+
+						for ( i = 0; i < pixel_size; ++ i ) {
+
+							pixels[ i ] = data[ offset ++ ];
+
+						}
+
+						// copy pixel array
+
+						for ( i = 0; i < count; ++ i ) {
+
+							pixel_data.set( pixels, shift + i * pixel_size );
+
+						}
+
+						shift += pixel_size * count;
+
+					} else {
+
+						// raw pixels
+
+						count *= pixel_size;
+
+						for ( i = 0; i < count; ++ i ) {
+
+							pixel_data[ shift + i ] = data[ offset ++ ];
+
+						}
+
+						shift += count;
+
+					}
+
+				}
+
+			 } else {
+
+				// raw pixels
+
+				pixel_data = data.subarray(
+					 offset, offset += ( use_pal ? header.width * header.height : pixel_total )
+				);
+
+			 }
+
+			 return {
+				pixel_data: pixel_data,
+				palettes: palettes
+			 };
+
+		}
+
+		function tgaGetImageData8bits( imageData, y_start, y_step, y_end, x_start, x_step, x_end, image, palettes ) {
+
+			var colormap = palettes;
+			var color, i = 0, x, y;
+			var width = header.width;
+
+			for ( y = y_start; y !== y_end; y += y_step ) {
+
+				for ( x = x_start; x !== x_end; x += x_step, i ++ ) {
+
+					color = image[ i ];
+					imageData[ ( x + width * y ) * 4 + 3 ] = 255;
+					imageData[ ( x + width * y ) * 4 + 2 ] = colormap[ ( color * 3 ) + 0 ];
+					imageData[ ( x + width * y ) * 4 + 1 ] = colormap[ ( color * 3 ) + 1 ];
+					imageData[ ( x + width * y ) * 4 + 0 ] = colormap[ ( color * 3 ) + 2 ];
+
+				}
+
+			}
+
+			return imageData;
+
+		}
+
+		function tgaGetImageData16bits( imageData, y_start, y_step, y_end, x_start, x_step, x_end, image ) {
+
+			var color, i = 0, x, y;
+			var width = header.width;
+
+			for ( y = y_start; y !== y_end; y += y_step ) {
+
+				for ( x = x_start; x !== x_end; x += x_step, i += 2 ) {
+
+					color = image[ i + 0 ] + ( image[ i + 1 ] << 8 ); // Inversed ?
+					imageData[ ( x + width * y ) * 4 + 0 ] = ( color & 0x7C00 ) >> 7;
+					imageData[ ( x + width * y ) * 4 + 1 ] = ( color & 0x03E0 ) >> 2;
+					imageData[ ( x + width * y ) * 4 + 2 ] = ( color & 0x001F ) >> 3;
+					imageData[ ( x + width * y ) * 4 + 3 ] = ( color & 0x8000 ) ? 0 : 255;
+
+				}
+
+			}
+
+			return imageData;
+
+		}
+
+		function tgaGetImageData24bits( imageData, y_start, y_step, y_end, x_start, x_step, x_end, image ) {
+
+			var i = 0, x, y;
+			var width = header.width;
+
+			for ( y = y_start; y !== y_end; y += y_step ) {
+
+				for ( x = x_start; x !== x_end; x += x_step, i += 3 ) {
+
+					imageData[ ( x + width * y ) * 4 + 3 ] = 255;
+					imageData[ ( x + width * y ) * 4 + 2 ] = image[ i + 0 ];
+					imageData[ ( x + width * y ) * 4 + 1 ] = image[ i + 1 ];
+					imageData[ ( x + width * y ) * 4 + 0 ] = image[ i + 2 ];
+
+				}
+
+			}
+
+			return imageData;
+
+		}
+
+		function tgaGetImageData32bits( imageData, y_start, y_step, y_end, x_start, x_step, x_end, image ) {
+
+			var i = 0, x, y;
+			var width = header.width;
+
+			for ( y = y_start; y !== y_end; y += y_step ) {
+
+				for ( x = x_start; x !== x_end; x += x_step, i += 4 ) {
+
+					imageData[ ( x + width * y ) * 4 + 2 ] = image[ i + 0 ];
+					imageData[ ( x + width * y ) * 4 + 1 ] = image[ i + 1 ];
+					imageData[ ( x + width * y ) * 4 + 0 ] = image[ i + 2 ];
+					imageData[ ( x + width * y ) * 4 + 3 ] = image[ i + 3 ];
+
+				}
+
+			}
+
+			return imageData;
+
+		}
+
+		function tgaGetImageDataGrey8bits( imageData, y_start, y_step, y_end, x_start, x_step, x_end, image ) {
+
+			var color, i = 0, x, y;
+			var width = header.width;
+
+			for ( y = y_start; y !== y_end; y += y_step ) {
+
+				for ( x = x_start; x !== x_end; x += x_step, i ++ ) {
+
+					color = image[ i ];
+					imageData[ ( x + width * y ) * 4 + 0 ] = color;
+					imageData[ ( x + width * y ) * 4 + 1 ] = color;
+					imageData[ ( x + width * y ) * 4 + 2 ] = color;
+					imageData[ ( x + width * y ) * 4 + 3 ] = 255;
+
+				}
+
+			}
+
+			return imageData;
+
+		}
+
+		function tgaGetImageDataGrey16bits( imageData, y_start, y_step, y_end, x_start, x_step, x_end, image ) {
+
+			var i = 0, x, y;
+			var width = header.width;
+
+			for ( y = y_start; y !== y_end; y += y_step ) {
+
+				for ( x = x_start; x !== x_end; x += x_step, i += 2 ) {
+
+					imageData[ ( x + width * y ) * 4 + 0 ] = image[ i + 0 ];
+					imageData[ ( x + width * y ) * 4 + 1 ] = image[ i + 0 ];
+					imageData[ ( x + width * y ) * 4 + 2 ] = image[ i + 0 ];
+					imageData[ ( x + width * y ) * 4 + 3 ] = image[ i + 1 ];
+
+				}
+
+			}
+
+			return imageData;
+
+		}
+
+		function getTgaRGBA( data, width, height, image, palette ) {
+
+			var x_start,
+				y_start,
+				x_step,
+				y_step,
+				x_end,
+				y_end;
+
+			switch ( ( header.flags & TGA_ORIGIN_MASK ) >> TGA_ORIGIN_SHIFT ) {
+
+				default:
+				case TGA_ORIGIN_UL:
+					x_start = 0;
+					x_step = 1;
+					x_end = width;
+					y_start = 0;
+					y_step = 1;
+					y_end = height;
+					break;
+
+				case TGA_ORIGIN_BL:
+					x_start = 0;
+					x_step = 1;
+					x_end = width;
+					y_start = height - 1;
+					y_step = - 1;
+					y_end = - 1;
+					break;
+
+				case TGA_ORIGIN_UR:
+					x_start = width - 1;
+					x_step = - 1;
+					x_end = - 1;
+					y_start = 0;
+					y_step = 1;
+					y_end = height;
+					break;
+
+				case TGA_ORIGIN_BR:
+					x_start = width - 1;
+					x_step = - 1;
+					x_end = - 1;
+					y_start = height - 1;
+					y_step = - 1;
+					y_end = - 1;
+					break;
+
+			}
+
+			if ( use_grey ) {
+
+				switch ( header.pixel_size ) {
+
+					case 8:
+						tgaGetImageDataGrey8bits( data, y_start, y_step, y_end, x_start, x_step, x_end, image );
+						break;
+
+					case 16:
+						tgaGetImageDataGrey16bits( data, y_start, y_step, y_end, x_start, x_step, x_end, image );
+						break;
+
+					default:
+						console.error( 'THREE.TGALoader: Format not supported.' );
+						break;
+
+				}
+
+			} else {
+
+				switch ( header.pixel_size ) {
+
+					case 8:
+						tgaGetImageData8bits( data, y_start, y_step, y_end, x_start, x_step, x_end, image, palette );
+						break;
+
+					case 16:
+						tgaGetImageData16bits( data, y_start, y_step, y_end, x_start, x_step, x_end, image );
+						break;
+
+					case 24:
+						tgaGetImageData24bits( data, y_start, y_step, y_end, x_start, x_step, x_end, image );
+						break;
+
+					case 32:
+						tgaGetImageData32bits( data, y_start, y_step, y_end, x_start, x_step, x_end, image );
+						break;
+
+					default:
+						console.error( 'THREE.TGALoader: Format not supported.' );
+						break;
+
+				}
+
+			}
+
+			// Load image data according to specific method
+			// var func = 'tgaGetImageData' + (use_grey ? 'Grey' : '') + (header.pixel_size) + 'bits';
+			// func(data, y_start, y_step, y_end, x_start, x_step, x_end, width, image, palette );
+			return data;
+
+		}
+
+		// TGA constants
+
+		var TGA_TYPE_NO_DATA = 0,
+			TGA_TYPE_INDEXED = 1,
+			TGA_TYPE_RGB = 2,
+			TGA_TYPE_GREY = 3,
+			TGA_TYPE_RLE_INDEXED = 9,
+			TGA_TYPE_RLE_RGB = 10,
+			TGA_TYPE_RLE_GREY = 11,
+
+			TGA_ORIGIN_MASK = 0x30,
+			TGA_ORIGIN_SHIFT = 0x04,
+			TGA_ORIGIN_BL = 0x00,
+			TGA_ORIGIN_BR = 0x01,
+			TGA_ORIGIN_UL = 0x02,
+			TGA_ORIGIN_UR = 0x03;
+
+		if ( buffer.length < 19 ) console.error( 'THREE.TGALoader: Not enough data to contain header.' );
+
+		var content = new Uint8Array( buffer ),
+			offset = 0,
+			header = {
+				id_length: content[ offset ++ ],
+				colormap_type: content[ offset ++ ],
+				image_type: content[ offset ++ ],
+				colormap_index: content[ offset ++ ] | content[ offset ++ ] << 8,
+				colormap_length: content[ offset ++ ] | content[ offset ++ ] << 8,
+				colormap_size: content[ offset ++ ],
+				origin: [
+					content[ offset ++ ] | content[ offset ++ ] << 8,
+					content[ offset ++ ] | content[ offset ++ ] << 8
+				],
+				width: content[ offset ++ ] | content[ offset ++ ] << 8,
+				height: content[ offset ++ ] | content[ offset ++ ] << 8,
+				pixel_size: content[ offset ++ ],
+				flags: content[ offset ++ ]
+			};
+
+		// check tga if it is valid format
+
+		tgaCheckHeader( header );
+
+		if ( header.id_length + offset > buffer.length ) {
+
+			console.error( 'THREE.TGALoader: No data.' );
+
+		}
+
+		// skip the needn't data
+
+		offset += header.id_length;
+
+		// get targa information about RLE compression and palette
+
+		var use_rle = false,
+			use_pal = false,
+			use_grey = false;
+
+		switch ( header.image_type ) {
+
+			case TGA_TYPE_RLE_INDEXED:
+				use_rle = true;
+				use_pal = true;
+				break;
+
+			case TGA_TYPE_INDEXED:
+				use_pal = true;
+				break;
+
+			case TGA_TYPE_RLE_RGB:
+				use_rle = true;
+				break;
+
+			case TGA_TYPE_RGB:
+				break;
+
+			case TGA_TYPE_RLE_GREY:
+				use_rle = true;
+				use_grey = true;
+				break;
+
+			case TGA_TYPE_GREY:
+				use_grey = true;
+				break;
+
+		}
+
+		//
+
+		var useOffscreen = typeof OffscreenCanvas !== 'undefined';
+
+		var canvas = useOffscreen ? new OffscreenCanvas( header.width, header.height ) : document.createElement( 'canvas' );
+		canvas.width = header.width;
+		canvas.height = header.height;
+
+		var context = canvas.getContext( '2d' );
+		var imageData = context.createImageData( header.width, header.height );
+
+		var result = tgaParse( use_rle, use_pal, header, offset, content );
+		getTgaRGBA( imageData.data, header.width, header.height, result.pixel_data, result.palettes );
+
+		context.putImageData( imageData, 0, 0 );
+
+		return canvas;
+
+	}
+
+} );
+
+
+
+
+/***/ }),
+
+/***/ "./src/components/assets/models/env/rocks/moud/ore.png":
+/*!*************************************************************!*\
+  !*** ./src/components/assets/models/env/rocks/moud/ore.png ***!
+  \*************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (__webpack_require__.p + "images/5fe9029582539a0c80526d5cc25dff9b-ore.png");
+
+/***/ }),
+
+/***/ "./src/components/assets/models/env/rocks/moud/unit.png":
+/*!**************************************************************!*\
+  !*** ./src/components/assets/models/env/rocks/moud/unit.png ***!
+  \**************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (__webpack_require__.p + "images/7ea2deebae112f1cd41c7bbb30d9fd63-unit.png");
+
+/***/ }),
+
 /***/ "./src/components/assets/skybox.png":
 /*!******************************************!*\
   !*** ./src/components/assets/skybox.png ***!
@@ -55531,7 +56120,7 @@ class Camera extends three__WEBPACK_IMPORTED_MODULE_0__.PerspectiveCamera {
         this.width = width
         this.height = height
 
-        this.position.set(0, 100, -100)
+        this.position.set(0, 50, -50)
         this.lookAt(0, 0, 0)
 
         this.updateSize();
@@ -55642,6 +56231,38 @@ __webpack_require__.r(__webpack_exports__);
 
 /***/ }),
 
+/***/ "./src/components/Layout.js":
+/*!**********************************!*\
+  !*** ./src/components/Layout.js ***!
+  \**********************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (/* binding */ Map)
+/* harmony export */ });
+/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+/* harmony import */ var _tiles_Plain__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./tiles/Plain */ "./src/components/tiles/Plain.js");
+
+
+class Map extends three__WEBPACK_IMPORTED_MODULE_1__.Group {
+    constructor() {
+        super()
+        for (let i = 0; i < 13; i++) {
+            for (let j = 0; j < 13; j++) {
+                let square = new _tiles_Plain__WEBPACK_IMPORTED_MODULE_0__.default();
+                square.position.z = 10 * i;
+                square.position.x = 10 * j;
+                this.add(square);
+            }
+        }
+        this.position.z -= 60;
+        this.position.x -= 60;
+    }
+}
+
+/***/ }),
+
 /***/ "./src/components/Main.js":
 /*!********************************!*\
   !*** ./src/components/Main.js ***!
@@ -55652,14 +56273,18 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   "default": () => (/* binding */ Main)
 /* harmony export */ });
-/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
 /* harmony import */ var _Renderer__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./Renderer */ "./src/components/Renderer.js");
 /* harmony import */ var _Camera__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./Camera */ "./src/components/Camera.js");
 /* harmony import */ var _Skybox__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./Skybox */ "./src/components/Skybox.js");
-/* harmony import */ var three_examples_jsm_controls_OrbitControls_js__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! three/examples/jsm/controls/OrbitControls.js */ "./node_modules/three/examples/jsm/controls/OrbitControls.js");
+/* harmony import */ var three_examples_jsm_controls_OrbitControls_js__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! three/examples/jsm/controls/OrbitControls.js */ "./node_modules/three/examples/jsm/controls/OrbitControls.js");
 /* harmony import */ var _Keyboard__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./Keyboard */ "./src/components/Keyboard.js");
 /* harmony import */ var _KeysConfig__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./KeysConfig */ "./src/components/KeysConfig.js");
 /* harmony import */ var _Map__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./Map */ "./src/components/Map.js");
+/* harmony import */ var _Layout__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./Layout */ "./src/components/Layout.js");
+/* harmony import */ var _game_Game__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./game/Game */ "./src/components/game/Game.js");
+
+
 
 
 
@@ -55671,25 +56296,58 @@ __webpack_require__.r(__webpack_exports__);
 
 class Main {
     constructor(container) {
+        //!! Mapa
+        let jsoned = [
+            ["plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain"],
+            ["plain", "baseRed", "plain", "ore", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain"],
+            ["plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain"],
+            ["plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain"],
+            ["plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain"],
+            ["plain", "plain", "plain", "plain", "hill", "plain", "ore", "plain", "plain", "plain", "plain", "plain", "plain"],
+            ["plain", "plain", "plain", "plain", "ore", "plain", "hill", "plain", "ore", "plain", "plain", "plain", "plain"],
+            ["plain", "plain", "plain", "plain", "plain", "plain", "ore", "plain", "hill", "plain", "plain", "plain", "plain"],
+            ["plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain"],
+            ["plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain"],
+            ["plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain"],
+            ["plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "ore", "plain", "baseBlue", "plain"],
+            ["plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain"]
+        ]
 
 
-        this.axesHelper = new three__WEBPACK_IMPORTED_MODULE_6__.AxesHelper(200)
-        this.gridHelper = new three__WEBPACK_IMPORTED_MODULE_6__.GridHelper(500, 10)
+
+        this.panel = document.getElementById("panel");
+        this.panel.style.display = "none";
+        this.axesHelper = new three__WEBPACK_IMPORTED_MODULE_8__.AxesHelper(200)
+        this.gridHelper = new three__WEBPACK_IMPORTED_MODULE_8__.GridHelper(500, 10)
         this.container = container;
-        this.scene = new three__WEBPACK_IMPORTED_MODULE_6__.Scene();
+        this.scene = new three__WEBPACK_IMPORTED_MODULE_8__.Scene();
         this.renderer = new _Renderer__WEBPACK_IMPORTED_MODULE_0__.default(container);
-        this.skybox = new _Skybox__WEBPACK_IMPORTED_MODULE_2__.default();
         this.camera = new _Camera__WEBPACK_IMPORTED_MODULE_1__.default(75, window.screen.width, window.screen.height);
         this.keyboard = new _Keyboard__WEBPACK_IMPORTED_MODULE_3__.default(window, this.camera)
-        const orbitControl = new three_examples_jsm_controls_OrbitControls_js__WEBPACK_IMPORTED_MODULE_7__.OrbitControls(this.camera, this.container)
+        const orbitControl = new three_examples_jsm_controls_OrbitControls_js__WEBPACK_IMPORTED_MODULE_9__.OrbitControls(this.camera, this.container)
 
-        this.test = new _Map__WEBPACK_IMPORTED_MODULE_5__.default();
+        this.test = new _Map__WEBPACK_IMPORTED_MODULE_5__.default(jsoned);
         this.scene.add(this.test)
 
-        this.scene.add(this.axesHelper)
-        this.scene.add(this.gridHelper)
-        this.scene.add(this.skybox)
-        this.renderer.setClearColor(0xffffff)
+        //!! Klasa logiczna gry
+
+        this.game = new _game_Game__WEBPACK_IMPORTED_MODULE_7__.default(jsoned, this.scene, this.test);
+
+        this.layout = new _Layout__WEBPACK_IMPORTED_MODULE_6__.default();
+        this.scene.add(this.layout);
+
+        this.light = new three__WEBPACK_IMPORTED_MODULE_8__.DirectionalLight(0xffffff, 1.25);
+        this.light.position.set(0, 100, 0)
+        this.scene.add(this.light)
+        //this.scene.add(this.axesHelper)
+        //this.scene.add(this.gridHelper)
+        this.fog = new three__WEBPACK_IMPORTED_MODULE_8__.Fog(0x000000, 100, 200)
+        this.scene.fog = this.fog
+
+        this.lastRaycasted = null;
+        this.raycast();
+
+        this.renderer.setClearColor(0x000000)
         this.render();
 
     }
@@ -55699,20 +56357,45 @@ class Main {
         if (this.camera) {
             //
             if (_KeysConfig__WEBPACK_IMPORTED_MODULE_4__.default.moveLeft) {
-                this.camera.translateX(-10)
+                this.camera.translateX(-3)
             }
             if (_KeysConfig__WEBPACK_IMPORTED_MODULE_4__.default.moveRight) {
-                this.camera.translateX(10)
+                this.camera.translateX(3)
             }
             if (_KeysConfig__WEBPACK_IMPORTED_MODULE_4__.default.moveForward) {
-                this.camera.position.z += 10
+                this.camera.position.z += 3
             }
             if (_KeysConfig__WEBPACK_IMPORTED_MODULE_4__.default.moveBack) {
-                this.camera.position.z -= 10
+                this.camera.position.z -= 3
             }
         }
         this.renderer.render(this.scene, this.camera);
         requestAnimationFrame(this.render.bind(this));
+    }
+    raycast() {
+        window.addEventListener("click", (e) => {
+            let raycaster = new three__WEBPACK_IMPORTED_MODULE_8__.Raycaster();
+            let mouseVector = new three__WEBPACK_IMPORTED_MODULE_8__.Vector2();
+            mouseVector.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouseVector.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouseVector, this.camera);
+            let intersects = raycaster.intersectObjects(this.layout.children);
+            if (intersects.length > 0) {
+                if (this.lastRaycasted != null) {
+                    this.lastRaycasted.object.material.color.set(0xffffff);
+                }
+                intersects[0].object.material.color.set(0xffc1cc)
+                this.panel.style.display = "block";
+                this.lastRaycasted = intersects[0];
+                //console.log(`${intersects[0].object.position.z / 10} ${intersects[0].object.position.x / 10}`)
+                let pointed = this.game.whatsThere(intersects[0].object.position.z / 10, intersects[0].object.position.x / 10);
+                this.game.changeDisplayInfo(pointed)
+            } else {
+                this.lastRaycasted.object.material.color.set(0xffffff);
+                this.lastRaycasted = null;
+                this.panel.style.display = "none";
+            }
+        });
     }
 }
 
@@ -55728,54 +56411,67 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   "default": () => (/* binding */ Map)
 /* harmony export */ });
-/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
-/* harmony import */ var _tiles_Plain__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./tiles/Plain */ "./src/components/tiles/Plain.js");
-/* harmony import */ var _tiles_Hill__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./tiles/Hill */ "./src/components/tiles/Hill.js");
-/* harmony import */ var _tiles_Base__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./tiles/Base */ "./src/components/tiles/Base.js");
+/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+/* harmony import */ var _buildings_Hill__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./buildings/Hill */ "./src/components/buildings/Hill.js");
+/* harmony import */ var _buildings_BaseBlue__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./buildings/BaseBlue */ "./src/components/buildings/BaseBlue.js");
+/* harmony import */ var _buildings_BaseRed__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./buildings/BaseRed */ "./src/components/buildings/BaseRed.js");
+/* harmony import */ var _buildings_Ore__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./buildings/Ore */ "./src/components/buildings/Ore.js");
 
 
 
 
-class Map extends three__WEBPACK_IMPORTED_MODULE_3__.Group {
-    constructor() {
-        const map = [
-            ["plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain"],
-            ["plain", "base", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain"],
-            ["plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain"],
-            ["plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain"],
-            ["plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain"],
-            ["plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain"],
-            ["plain", "plain", "plain", "hill", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain"],
-            ["plain", "plain", "hill", "plain", "hill", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain"],
-            ["plain", "plain", "plain", "hill", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain"],
-            ["plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain"],
-            ["plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain"],
-            ["plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain"],
-            ["plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain"]
-        ]
+
+class Map extends three__WEBPACK_IMPORTED_MODULE_4__.Group {
+    constructor(map) {
         super()
         this.map = map;
+        this.modelMap = []
         for (let i = 0; i < this.map.length; i++) {
+            this.modelMap[i] = []
             for (let j = 0; j < this.map[i].length; j++) {
                 let square;
                 switch (this.map[i][j]) {
-                    case 'plain':
-                        square = new _tiles_Plain__WEBPACK_IMPORTED_MODULE_0__.default();
-                        break
                     case 'hill':
-                        square = new _tiles_Hill__WEBPACK_IMPORTED_MODULE_1__.default();
+                        square = new _buildings_Hill__WEBPACK_IMPORTED_MODULE_0__.default();
+                        square.position.z = 10 * i;
+                        square.position.x = 10 * j;
+                        this.add(square);
+                        this.modelMap[i][j] = square;
                         break
-                    case 'base':
-                        square = new _tiles_Base__WEBPACK_IMPORTED_MODULE_2__.default();
+                    case 'baseBlue':
+                        square = new _buildings_BaseBlue__WEBPACK_IMPORTED_MODULE_1__.default();
+                        square.position.z = 10 * i;
+                        square.position.x = 10 * j;
+                        this.add(square);
+                        this.modelMap[i][j] = square;
+                        break
+                    case 'baseRed':
+                        square = new _buildings_BaseRed__WEBPACK_IMPORTED_MODULE_2__.default();
+                        square.position.z = 10 * i;
+                        square.position.x = 10 * j;
+                        this.add(square);
+                        this.modelMap[i][j] = square;
+                        break
+                    case 'ore':
+                        square = new _buildings_Ore__WEBPACK_IMPORTED_MODULE_3__.default();
+                        square.position.z = 10 * i;
+                        square.position.x = 10 * j;
+                        this.add(square);
+                        this.modelMap[i][j] = square;
+                        break
+                    case 'plain':
+                        square = null;
+                        this.modelMap[i][j] = square;
                         break
                 }
-                square.position.z = 10 * i;
-                square.position.x = 10 * j;
-                this.add(square);
             }
         }
         this.position.z -= 60;
         this.position.x -= 60;
+        this.position.y += 5;
+    }
+    returnModelMap() {
+        return this.map;
     }
 }
 
@@ -55835,59 +56531,106 @@ __webpack_require__.r(__webpack_exports__);
 class Skybox extends three__WEBPACK_IMPORTED_MODULE_1__.Mesh {
     constructor() {
         const textures = new three__WEBPACK_IMPORTED_MODULE_1__.TextureLoader().load(_assets_skybox_png__WEBPACK_IMPORTED_MODULE_0__.default);
-        super(new three__WEBPACK_IMPORTED_MODULE_1__.BoxGeometry(10000, 10000, 10000), new three__WEBPACK_IMPORTED_MODULE_1__.MeshBasicMaterial({ color: 0x301934, side: three__WEBPACK_IMPORTED_MODULE_1__.DoubleSide }));
+        super(new three__WEBPACK_IMPORTED_MODULE_1__.BoxGeometry(10000, 10000, 10000), new three__WEBPACK_IMPORTED_MODULE_1__.MeshPhongMaterial({ map: textures, side: three__WEBPACK_IMPORTED_MODULE_1__.BackSide }));
     }
 }
 
 /***/ }),
 
-/***/ "./src/components/assets/models/struct3.FBX":
-/*!**************************************************!*\
-  !*** ./src/components/assets/models/struct3.FBX ***!
-  \**************************************************/
+/***/ "./src/components/assets/models/buildings/base/build.FBX":
+/*!***************************************************************!*\
+  !*** ./src/components/assets/models/buildings/base/build.FBX ***!
+  \***************************************************************/
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
-module.exports = __webpack_require__.p + "e957dc2c765b05edde37.FBX";
+module.exports = __webpack_require__.p + "165a7b340d03220922a6.FBX";
 
 /***/ }),
 
-/***/ "./src/components/assets/models/struct3.tga":
-/*!**************************************************!*\
-  !*** ./src/components/assets/models/struct3.tga ***!
-  \**************************************************/
+/***/ "./src/components/assets/models/buildings/base/build_blue.tga":
+/*!********************************************************************!*\
+  !*** ./src/components/assets/models/buildings/base/build_blue.tga ***!
+  \********************************************************************/
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
-module.exports = __webpack_require__.p + "7021db9587f8f2389cc2.tga";
+module.exports = __webpack_require__.p + "6309c6f6416ec171c5b1.tga";
 
 /***/ }),
 
-/***/ "./src/components/tiles/Base.js":
-/*!**************************************!*\
-  !*** ./src/components/tiles/Base.js ***!
-  \**************************************/
+/***/ "./src/components/assets/models/buildings/base/build_red.tga":
+/*!*******************************************************************!*\
+  !*** ./src/components/assets/models/buildings/base/build_red.tga ***!
+  \*******************************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+module.exports = __webpack_require__.p + "b134fbaaa3e6db587190.tga";
+
+/***/ }),
+
+/***/ "./src/components/assets/models/buildings/mine/build.fbx":
+/*!***************************************************************!*\
+  !*** ./src/components/assets/models/buildings/mine/build.fbx ***!
+  \***************************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+module.exports = __webpack_require__.p + "988e58c98a3658827e7f.fbx";
+
+/***/ }),
+
+/***/ "./src/components/assets/models/buildings/mine/build_blue.tga":
+/*!********************************************************************!*\
+  !*** ./src/components/assets/models/buildings/mine/build_blue.tga ***!
+  \********************************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+module.exports = __webpack_require__.p + "a934524d521df03f2e63.tga";
+
+/***/ }),
+
+/***/ "./src/components/assets/models/env/rocks/moud/unit.fbx":
+/*!**************************************************************!*\
+  !*** ./src/components/assets/models/env/rocks/moud/unit.fbx ***!
+  \**************************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+module.exports = __webpack_require__.p + "153a02f5c54664ff9167.fbx";
+
+/***/ }),
+
+/***/ "./src/components/buildings/BaseBlue.js":
+/*!**********************************************!*\
+  !*** ./src/components/buildings/BaseBlue.js ***!
+  \**********************************************/
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "default": () => (/* binding */ Base)
+/* harmony export */   "default": () => (/* binding */ BaseBlue)
 /* harmony export */ });
-/* harmony import */ var three_examples_jsm_loaders_FBXLoader_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! three/examples/jsm/loaders/FBXLoader.js */ "./node_modules/three/examples/jsm/loaders/FBXLoader.js");
+/* harmony import */ var three_examples_jsm_loaders_FBXLoader_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! three/examples/jsm/loaders/FBXLoader.js */ "./node_modules/three/examples/jsm/loaders/FBXLoader.js");
+/* harmony import */ var three_examples_jsm_loaders_TGALoader_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! three/examples/jsm/loaders/TGALoader.js */ "./node_modules/three/examples/jsm/loaders/TGALoader.js");
 /* harmony import */ var three__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
-/* harmony import */ var _assets_models_struct3_FBX__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../assets/models/struct3.FBX */ "./src/components/assets/models/struct3.FBX");
-/* harmony import */ var _assets_models_struct3_tga__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../assets/models/struct3.tga */ "./src/components/assets/models/struct3.tga");
+/* harmony import */ var _assets_models_buildings_base_build_FBX__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../assets/models/buildings/base/build.FBX */ "./src/components/assets/models/buildings/base/build.FBX");
+/* harmony import */ var _assets_models_buildings_base_build_blue_tga__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../assets/models/buildings/base/build_blue.tga */ "./src/components/assets/models/buildings/base/build_blue.tga");
 
 
 
 
 
-class Base extends three__WEBPACK_IMPORTED_MODULE_2__.Group {
+
+class BaseBlue extends three__WEBPACK_IMPORTED_MODULE_2__.Group {
     constructor() {
         super()
-        const base = new three__WEBPACK_IMPORTED_MODULE_2__.Mesh(new three__WEBPACK_IMPORTED_MODULE_2__.BoxGeometry(10, 10, 10), new three__WEBPACK_IMPORTED_MODULE_2__.MeshBasicMaterial({ color: 0x679267, }));
-        const loader = new three_examples_jsm_loaders_FBXLoader_js__WEBPACK_IMPORTED_MODULE_3__.FBXLoader();
-        loader.load(_assets_models_struct3_FBX__WEBPACK_IMPORTED_MODULE_0__, (object) => {
-            object.position.y += 5;
-
+        const textureLoader = new three_examples_jsm_loaders_TGALoader_js__WEBPACK_IMPORTED_MODULE_3__.TGALoader();
+        let texture = textureLoader.load(_assets_models_buildings_base_build_blue_tga__WEBPACK_IMPORTED_MODULE_1__);
+        const material = new three__WEBPACK_IMPORTED_MODULE_2__.MeshPhongMaterial({
+            map: texture
+        });
+        const loader = new three_examples_jsm_loaders_FBXLoader_js__WEBPACK_IMPORTED_MODULE_4__.FBXLoader();
+        loader.load(_assets_models_buildings_base_build_FBX__WEBPACK_IMPORTED_MODULE_0__, (object) => {
+            object.children.forEach(element => {
+                element.material = material
+            })
             this.add(object)
         });
     }
@@ -55895,30 +56638,293 @@ class Base extends three__WEBPACK_IMPORTED_MODULE_2__.Group {
 
 /***/ }),
 
-/***/ "./src/components/tiles/Hill.js":
-/*!**************************************!*\
-  !*** ./src/components/tiles/Hill.js ***!
-  \**************************************/
+/***/ "./src/components/buildings/BaseRed.js":
+/*!*********************************************!*\
+  !*** ./src/components/buildings/BaseRed.js ***!
+  \*********************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (/* binding */ BaseBlue)
+/* harmony export */ });
+/* harmony import */ var three_examples_jsm_loaders_FBXLoader_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! three/examples/jsm/loaders/FBXLoader.js */ "./node_modules/three/examples/jsm/loaders/FBXLoader.js");
+/* harmony import */ var three_examples_jsm_loaders_TGALoader_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! three/examples/jsm/loaders/TGALoader.js */ "./node_modules/three/examples/jsm/loaders/TGALoader.js");
+/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+/* harmony import */ var _assets_models_buildings_base_build_FBX__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../assets/models/buildings/base/build.FBX */ "./src/components/assets/models/buildings/base/build.FBX");
+/* harmony import */ var _assets_models_buildings_base_build_red_tga__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../assets/models/buildings/base/build_red.tga */ "./src/components/assets/models/buildings/base/build_red.tga");
+
+
+
+
+
+
+class BaseBlue extends three__WEBPACK_IMPORTED_MODULE_2__.Group {
+    constructor() {
+        super()
+        const textureLoader = new three_examples_jsm_loaders_TGALoader_js__WEBPACK_IMPORTED_MODULE_3__.TGALoader();
+        let texture = textureLoader.load(_assets_models_buildings_base_build_red_tga__WEBPACK_IMPORTED_MODULE_1__);
+        const material = new three__WEBPACK_IMPORTED_MODULE_2__.MeshPhongMaterial({
+            map: texture
+        });
+        const loader = new three_examples_jsm_loaders_FBXLoader_js__WEBPACK_IMPORTED_MODULE_4__.FBXLoader();
+        loader.load(_assets_models_buildings_base_build_FBX__WEBPACK_IMPORTED_MODULE_0__, (object) => {
+            object.children.forEach(element => {
+                element.material = material
+            })
+            this.add(object)
+        });
+    }
+}
+
+/***/ }),
+
+/***/ "./src/components/buildings/Extractor.js":
+/*!***********************************************!*\
+  !*** ./src/components/buildings/Extractor.js ***!
+  \***********************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (/* binding */ Mine)
+/* harmony export */ });
+/* harmony import */ var three_examples_jsm_loaders_FBXLoader_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! three/examples/jsm/loaders/FBXLoader.js */ "./node_modules/three/examples/jsm/loaders/FBXLoader.js");
+/* harmony import */ var three_examples_jsm_loaders_TGALoader_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! three/examples/jsm/loaders/TGALoader.js */ "./node_modules/three/examples/jsm/loaders/TGALoader.js");
+/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+/* harmony import */ var _assets_models_buildings_mine_build_fbx__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../assets/models/buildings/mine/build.fbx */ "./src/components/assets/models/buildings/mine/build.fbx");
+/* harmony import */ var _assets_models_buildings_mine_build_blue_tga__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../assets/models/buildings/mine/build_blue.tga */ "./src/components/assets/models/buildings/mine/build_blue.tga");
+
+
+
+
+
+
+class Mine extends three__WEBPACK_IMPORTED_MODULE_2__.Group {
+    constructor() {
+        super()
+        const textureLoader = new three_examples_jsm_loaders_TGALoader_js__WEBPACK_IMPORTED_MODULE_3__.TGALoader();
+        let texture = textureLoader.load(_assets_models_buildings_mine_build_blue_tga__WEBPACK_IMPORTED_MODULE_1__);
+        const material = new three__WEBPACK_IMPORTED_MODULE_2__.MeshPhongMaterial({
+            map: texture
+        });
+        const loader = new three_examples_jsm_loaders_FBXLoader_js__WEBPACK_IMPORTED_MODULE_4__.FBXLoader();
+        loader.load(_assets_models_buildings_mine_build_fbx__WEBPACK_IMPORTED_MODULE_0__, (object) => {
+            object.children.forEach(element => {
+                element.material = material
+            })
+            this.add(object)
+        });
+    }
+}
+
+/***/ }),
+
+/***/ "./src/components/buildings/Hill.js":
+/*!******************************************!*\
+  !*** ./src/components/buildings/Hill.js ***!
+  \******************************************/
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   "default": () => (/* binding */ Hill)
 /* harmony export */ });
-/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
-/* harmony import */ var _assets_tiles_plain_png__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../assets/tiles/plain.png */ "./src/components/assets/tiles/plain.png");
+/* harmony import */ var three_examples_jsm_loaders_FBXLoader_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! three/examples/jsm/loaders/FBXLoader.js */ "./node_modules/three/examples/jsm/loaders/FBXLoader.js");
+/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+/* harmony import */ var _assets_models_env_rocks_moud_unit_fbx__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../assets/models/env/rocks/moud/unit.fbx */ "./src/components/assets/models/env/rocks/moud/unit.fbx");
+/* harmony import */ var _assets_models_env_rocks_moud_unit_png__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../assets/models/env/rocks/moud/unit.png */ "./src/components/assets/models/env/rocks/moud/unit.png");
 
 
 
-class Hill extends three__WEBPACK_IMPORTED_MODULE_1__.Group {
+
+
+class Hill extends three__WEBPACK_IMPORTED_MODULE_2__.Group {
     constructor() {
         super()
-        const base = new three__WEBPACK_IMPORTED_MODULE_1__.Mesh(new three__WEBPACK_IMPORTED_MODULE_1__.BoxGeometry(10, 10, 10), new three__WEBPACK_IMPORTED_MODULE_1__.MeshBasicMaterial({ color: 0x679267, }));
-        const hill = new three__WEBPACK_IMPORTED_MODULE_1__.Mesh(new three__WEBPACK_IMPORTED_MODULE_1__.ConeGeometry(5, 10, 5), new three__WEBPACK_IMPORTED_MODULE_1__.MeshBasicMaterial({ color: 0x808080 }));
-        hill.position.y += 7.5;
-        this.add(base)
-        this.add(hill)
-        //{ map: textures }
+        const textureLoader = new three__WEBPACK_IMPORTED_MODULE_2__.TextureLoader();
+        const texture = textureLoader.load(_assets_models_env_rocks_moud_unit_png__WEBPACK_IMPORTED_MODULE_1__.default)
+        const material = new three__WEBPACK_IMPORTED_MODULE_2__.MeshPhongMaterial({
+            map: texture
+        });
+        const loader = new three_examples_jsm_loaders_FBXLoader_js__WEBPACK_IMPORTED_MODULE_3__.FBXLoader();
+        loader.load(_assets_models_env_rocks_moud_unit_fbx__WEBPACK_IMPORTED_MODULE_0__, (object) => {
+            object.scale.set(0.5, 0.5, 0.5);
+            object.children.forEach(element => {
+                element.material = material
+            })
+            this.add(object)
+        });
+    }
+}
+
+/***/ }),
+
+/***/ "./src/components/buildings/Ore.js":
+/*!*****************************************!*\
+  !*** ./src/components/buildings/Ore.js ***!
+  \*****************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (/* binding */ Ore)
+/* harmony export */ });
+/* harmony import */ var three_examples_jsm_loaders_FBXLoader_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! three/examples/jsm/loaders/FBXLoader.js */ "./node_modules/three/examples/jsm/loaders/FBXLoader.js");
+/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+/* harmony import */ var _assets_models_env_rocks_moud_unit_fbx__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../assets/models/env/rocks/moud/unit.fbx */ "./src/components/assets/models/env/rocks/moud/unit.fbx");
+/* harmony import */ var _assets_models_env_rocks_moud_ore_png__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../assets/models/env/rocks/moud/ore.png */ "./src/components/assets/models/env/rocks/moud/ore.png");
+
+
+
+
+
+class Ore extends three__WEBPACK_IMPORTED_MODULE_2__.Group {
+    constructor() {
+        super()
+        const textureLoader = new three__WEBPACK_IMPORTED_MODULE_2__.TextureLoader();
+        const texture = textureLoader.load(_assets_models_env_rocks_moud_ore_png__WEBPACK_IMPORTED_MODULE_1__.default)
+        const material = new three__WEBPACK_IMPORTED_MODULE_2__.MeshPhongMaterial({
+            map: texture
+        });
+        const loader = new three_examples_jsm_loaders_FBXLoader_js__WEBPACK_IMPORTED_MODULE_3__.FBXLoader();
+        loader.load(_assets_models_env_rocks_moud_unit_fbx__WEBPACK_IMPORTED_MODULE_0__, (object) => {
+            object.scale.set(0.2, 0.2, 0.2);
+            object.children.forEach(element => {
+                element.material = material
+            })
+            this.add(object)
+        });
+    }
+}
+
+/***/ }),
+
+/***/ "./src/components/game/Game.js":
+/*!*************************************!*\
+  !*** ./src/components/game/Game.js ***!
+  \*************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (/* binding */ Game)
+/* harmony export */ });
+/* harmony import */ var _buildings_Extractor__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../buildings/Extractor */ "./src/components/buildings/Extractor.js");
+
+class Game {
+    constructor(map, scene, modelMap) {
+        this.player = "Red"
+        this.scene = scene;
+        this.raw = map;
+        this.modelMap = modelMap
+        this.map = [];
+        for (let i = 0; i < 13; i++) {
+            this.map[i] = [];
+            for (let j = 0; j < 13; j++) {
+                switch (this.raw[i][j]) {
+                    case 'plain':
+                        this.map[i][j] = {
+                            name: 'Plain',
+                            occupied: false,
+                            owner: null,
+                            type: null,
+                            i: i,
+                            j: j
+                        }
+                        break
+                    case 'baseRed':
+                        this.map[i][j] = {
+                            name: 'Base',
+                            occupied: true,
+                            owner: 'Red',
+                            type: 'base',
+                            i: i,
+                            j: j
+                        }
+                        break
+                    case 'baseBlue':
+                        this.map[i][j] = {
+                            name: 'Base',
+                            occupied: true,
+                            owner: 'Blue',
+                            type: 'base',
+                            i: i,
+                            j: j
+                        }
+                        break
+                    case 'hill':
+                        this.map[i][j] = {
+                            name: 'Hill',
+                            occupied: true,
+                            owner: null,
+                            type: 'hill',
+                            i: i,
+                            j: j
+                        }
+                        break
+                    case 'ore':
+                        this.map[i][j] = {
+                            name: 'Ore',
+                            occupied: true,
+                            owner: null,
+                            type: 'ore',
+                            i: i,
+                            j: j
+                        }
+                }
+            }
+        }
+    }
+    whatsThere(i, j) {
+        return this.map[i][j];
+    }
+    changeDisplayInfo(info) {
+        document.getElementById("currentName").innerText = info.name;
+        this.changeOptions(info)
+    }
+    build(structure, info) {
+        switch (structure) {
+            case 'extractor':
+                console.log(this.modelMap.modelMap[info.i][info.j])
+                this.map[info.i][info.j].owner = this.player;
+                this.modelMap.remove(this.modelMap[info.i][info.j])
+                let square = new _buildings_Extractor__WEBPACK_IMPORTED_MODULE_0__.default();
+                // this.scene.add(square);
+                // this.modelMap[info.i][info.j]
+                break
+        }
+    }
+    changeOptions(info) {
+        let tab = document.getElementById("options")
+        switch (info.type) {
+            case 'base':
+                if (info.owner == this.player) {
+                    tab.innerHTML = "<p>siema mordo</p>"
+                } else {
+                    tab.innerHTML = "<p>nie twoja baza kozaku</p>"
+                }
+                break
+            case 'ore':
+                tab.innerHTML = "";
+                if (info.owner == null) {
+                    let btn = document.createElement("button")
+                    btn.innerText = "Build Extractor"
+                    btn.addEventListener("click", (e) => {
+                        this.build('extractor', info)
+                    });
+                    tab.appendChild(btn)
+                } else {
+                    tab.innerHTML = `<p>Occupied by ${info.owner}</p>`
+                }
+                break
+            case 'hill':
+                tab.innerHTML = "<p>High hill</p>"
+                break
+            case null:
+                tab.innerHTML = "";
+                break
+        }
     }
 }
 
@@ -55942,7 +56948,7 @@ __webpack_require__.r(__webpack_exports__);
 class Plain extends three__WEBPACK_IMPORTED_MODULE_1__.Mesh {
     constructor() {
         const textures = new three__WEBPACK_IMPORTED_MODULE_1__.TextureLoader().load(_assets_tiles_plain_png__WEBPACK_IMPORTED_MODULE_0__.default);
-        super(new three__WEBPACK_IMPORTED_MODULE_1__.BoxGeometry(10, 10, 10), new three__WEBPACK_IMPORTED_MODULE_1__.MeshBasicMaterial({ color: 0x679267 }));
+        super(new three__WEBPACK_IMPORTED_MODULE_1__.BoxGeometry(10, 10, 10), new three__WEBPACK_IMPORTED_MODULE_1__.MeshPhongMaterial({ map: textures }));
         //map: textures
     }
 }
