@@ -11,14 +11,20 @@ import {
     Group,
     Scene
 } from 'three';
-import model from '../assets/models/buildings/base/build.FBX';
-import text from '../assets/models/buildings/base/build_red.tga';
+import model from '../assets/models/units/car/unit.fbx';
+import text_red from '../assets/models/units/car/unit_red.tga';
+import text_blue from '../assets/models/units/car/unit_blue.tga';
 
-export default class BaseRed extends Group {
-    constructor() {
+export default class Car extends Group {
+    constructor(player) {
         super()
         const textureLoader = new TGALoader();
-        let texture = textureLoader.load(text);
+        let texture;
+        if (player == "Red") {
+            texture = textureLoader.load(text_red);
+        } else {
+            texture = textureLoader.load(text_blue);
+        }
         const material = new MeshPhongMaterial({
             map: texture
         });

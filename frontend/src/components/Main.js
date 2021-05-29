@@ -39,7 +39,7 @@ export default class Main {
             ["plain", "plain", "plain", "plain", "plain", "plain", "ore", "plain", "hill", "plain", "plain", "plain", "plain"],
             ["plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain"],
             ["plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain"],
-            ["plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain"],
+            ["plain", "plain", "plain", "hill", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain"],
             ["plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "ore", "plain", "baseBlue", "plain"],
             ["plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain"]
         ]
@@ -64,6 +64,13 @@ export default class Main {
 
         this.game = new Game(jsoned, this.scene, this.test);
 
+        //!! Podpięcie skipturn
+
+        document.getElementById("skipTurn").addEventListener("click", (e) => {
+            this.game.skipTurn()
+        });
+
+
         this.layout = new Layout();
         this.scene.add(this.layout);
 
@@ -85,46 +92,66 @@ export default class Main {
 
     render() {
 
-        if (this.camera) {
-            //
-            if (Config.moveLeft) {
-                this.camera.translateX(-3)
-            }
-            if (Config.moveRight) {
-                this.camera.translateX(3)
-            }
-            if (Config.moveForward) {
-                this.camera.position.z += 3
-            }
-            if (Config.moveBack) {
-                this.camera.position.z -= 3
-            }
-        }
+        // if (this.camera) {
+        //     //
+        //     if (Config.moveLeft) {
+        //         this.camera.translateX(-3)
+        //     }
+        //     if (Config.moveRight) {
+        //         this.camera.translateX(3)
+        //     }
+        //     if (Config.moveForward) {
+        //         this.camera.position.z += 3
+        //     }
+        //     if (Config.moveBack) {
+        //         this.camera.position.z -= 3
+        //     }
+        // }
         this.renderer.render(this.scene, this.camera);
         requestAnimationFrame(this.render.bind(this));
     }
     raycast() {
         window.addEventListener("click", (e) => {
-            let raycaster = new Raycaster();
-            let mouseVector = new Vector2();
-            mouseVector.x = (e.clientX / window.innerWidth) * 2 - 1;
-            mouseVector.y = -(e.clientY / window.innerHeight) * 2 + 1;
-            raycaster.setFromCamera(mouseVector, this.camera);
-            let intersects = raycaster.intersectObjects(this.layout.children);
-            if (intersects.length > 0) {
-                if (this.lastRaycasted != null) {
-                    this.lastRaycasted.object.material.color.set(0xffffff);
+            if (e.clientY < window.innerHeight * 0.75) {
+                if (this.game.moves) {
+                    let raycaster = new Raycaster();
+                    let mouseVector = new Vector2();
+                    mouseVector.x = (e.clientX / window.innerWidth) * 2 - 1;
+                    mouseVector.y = -(e.clientY / window.innerHeight) * 2 + 1;
+                    raycaster.setFromCamera(mouseVector, this.camera);
+                    let intersects = raycaster.intersectObjects(this.layout.children);
+                    if (intersects.length > 0) {
+                        let pointed = this.game.whatsThere(intersects[0].object.position.z / 10, intersects[0].object.position.x / 10);
+                        this.game.move(pointed, this.game.selected)
+
+                    } else {
+                        alert("invalid command")
+                    }
+                } else {
+                    let raycaster = new Raycaster();
+                    let mouseVector = new Vector2();
+                    mouseVector.x = (e.clientX / window.innerWidth) * 2 - 1;
+                    mouseVector.y = -(e.clientY / window.innerHeight) * 2 + 1;
+                    raycaster.setFromCamera(mouseVector, this.camera);
+                    let intersects = raycaster.intersectObjects(this.layout.children);
+                    if (intersects.length > 0) {
+                        if (this.lastRaycasted != null) {
+                            this.lastRaycasted.object.material.color.set(0xffffff);
+                        }
+                        intersects[0].object.material.color.set(0xffc1cc)
+                        this.panel.style.display = "block";
+                        this.lastRaycasted = intersects[0];
+                        //console.log(`${intersects[0].object.position.z / 10} ${intersects[0].object.position.x / 10}`)
+                        let pointed = this.game.whatsThere(intersects[0].object.position.z / 10, intersects[0].object.position.x / 10);
+                        this.game.changeDisplayInfo(pointed)
+                        //console.log(pointed)
+
+                    } else {
+                        this.lastRaycasted.object.material.color.set(0xffffff);
+                        this.lastRaycasted = null;
+                        this.panel.style.display = "none";
+                    }
                 }
-                intersects[0].object.material.color.set(0xffc1cc)
-                this.panel.style.display = "block";
-                this.lastRaycasted = intersects[0];
-                //console.log(`${intersects[0].object.position.z / 10} ${intersects[0].object.position.x / 10}`)
-                let pointed = this.game.whatsThere(intersects[0].object.position.z / 10, intersects[0].object.position.x / 10);
-                this.game.changeDisplayInfo(pointed)
-            } else {
-                this.lastRaycasted.object.material.color.set(0xffffff);
-                this.lastRaycasted = null;
-                this.panel.style.display = "none";
             }
         });
     }

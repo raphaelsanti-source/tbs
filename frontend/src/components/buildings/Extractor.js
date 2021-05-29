@@ -15,7 +15,7 @@ import model from '../assets/models/buildings/mine/build.fbx';
 import text_red from '../assets/models/buildings/mine/build_red.tga';
 import text_blue from '../assets/models/buildings/mine/build_blue.tga';
 
-export default class Mine extends Group {
+export default class Extractor extends Group {
     constructor(player) {
         super()
         const textureLoader = new TGALoader();

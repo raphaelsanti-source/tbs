@@ -56308,7 +56308,7 @@ class Main {
             ["plain", "plain", "plain", "plain", "plain", "plain", "ore", "plain", "hill", "plain", "plain", "plain", "plain"],
             ["plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain"],
             ["plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain"],
-            ["plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain"],
+            ["plain", "plain", "plain", "hill", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain"],
             ["plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "ore", "plain", "baseBlue", "plain"],
             ["plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain", "plain"]
         ]
@@ -56333,6 +56333,13 @@ class Main {
 
         this.game = new _game_Game__WEBPACK_IMPORTED_MODULE_7__.default(jsoned, this.scene, this.test);
 
+        //!! Podpięcie skipturn
+
+        document.getElementById("skipTurn").addEventListener("click", (e) => {
+            this.game.skipTurn()
+        });
+
+
         this.layout = new _Layout__WEBPACK_IMPORTED_MODULE_6__.default();
         this.scene.add(this.layout);
 
@@ -56354,46 +56361,66 @@ class Main {
 
     render() {
 
-        if (this.camera) {
-            //
-            if (_KeysConfig__WEBPACK_IMPORTED_MODULE_4__.default.moveLeft) {
-                this.camera.translateX(-3)
-            }
-            if (_KeysConfig__WEBPACK_IMPORTED_MODULE_4__.default.moveRight) {
-                this.camera.translateX(3)
-            }
-            if (_KeysConfig__WEBPACK_IMPORTED_MODULE_4__.default.moveForward) {
-                this.camera.position.z += 3
-            }
-            if (_KeysConfig__WEBPACK_IMPORTED_MODULE_4__.default.moveBack) {
-                this.camera.position.z -= 3
-            }
-        }
+        // if (this.camera) {
+        //     //
+        //     if (Config.moveLeft) {
+        //         this.camera.translateX(-3)
+        //     }
+        //     if (Config.moveRight) {
+        //         this.camera.translateX(3)
+        //     }
+        //     if (Config.moveForward) {
+        //         this.camera.position.z += 3
+        //     }
+        //     if (Config.moveBack) {
+        //         this.camera.position.z -= 3
+        //     }
+        // }
         this.renderer.render(this.scene, this.camera);
         requestAnimationFrame(this.render.bind(this));
     }
     raycast() {
         window.addEventListener("click", (e) => {
-            let raycaster = new three__WEBPACK_IMPORTED_MODULE_8__.Raycaster();
-            let mouseVector = new three__WEBPACK_IMPORTED_MODULE_8__.Vector2();
-            mouseVector.x = (e.clientX / window.innerWidth) * 2 - 1;
-            mouseVector.y = -(e.clientY / window.innerHeight) * 2 + 1;
-            raycaster.setFromCamera(mouseVector, this.camera);
-            let intersects = raycaster.intersectObjects(this.layout.children);
-            if (intersects.length > 0) {
-                if (this.lastRaycasted != null) {
-                    this.lastRaycasted.object.material.color.set(0xffffff);
+            if (e.clientY < window.innerHeight * 0.75) {
+                if (this.game.moves) {
+                    let raycaster = new three__WEBPACK_IMPORTED_MODULE_8__.Raycaster();
+                    let mouseVector = new three__WEBPACK_IMPORTED_MODULE_8__.Vector2();
+                    mouseVector.x = (e.clientX / window.innerWidth) * 2 - 1;
+                    mouseVector.y = -(e.clientY / window.innerHeight) * 2 + 1;
+                    raycaster.setFromCamera(mouseVector, this.camera);
+                    let intersects = raycaster.intersectObjects(this.layout.children);
+                    if (intersects.length > 0) {
+                        let pointed = this.game.whatsThere(intersects[0].object.position.z / 10, intersects[0].object.position.x / 10);
+                        this.game.move(pointed, this.game.selected)
+
+                    } else {
+                        alert("invalid command")
+                    }
+                } else {
+                    let raycaster = new three__WEBPACK_IMPORTED_MODULE_8__.Raycaster();
+                    let mouseVector = new three__WEBPACK_IMPORTED_MODULE_8__.Vector2();
+                    mouseVector.x = (e.clientX / window.innerWidth) * 2 - 1;
+                    mouseVector.y = -(e.clientY / window.innerHeight) * 2 + 1;
+                    raycaster.setFromCamera(mouseVector, this.camera);
+                    let intersects = raycaster.intersectObjects(this.layout.children);
+                    if (intersects.length > 0) {
+                        if (this.lastRaycasted != null) {
+                            this.lastRaycasted.object.material.color.set(0xffffff);
+                        }
+                        intersects[0].object.material.color.set(0xffc1cc)
+                        this.panel.style.display = "block";
+                        this.lastRaycasted = intersects[0];
+                        //console.log(`${intersects[0].object.position.z / 10} ${intersects[0].object.position.x / 10}`)
+                        let pointed = this.game.whatsThere(intersects[0].object.position.z / 10, intersects[0].object.position.x / 10);
+                        this.game.changeDisplayInfo(pointed)
+                        //console.log(pointed)
+
+                    } else {
+                        this.lastRaycasted.object.material.color.set(0xffffff);
+                        this.lastRaycasted = null;
+                        this.panel.style.display = "none";
+                    }
                 }
-                intersects[0].object.material.color.set(0xffc1cc)
-                this.panel.style.display = "block";
-                this.lastRaycasted = intersects[0];
-                //console.log(`${intersects[0].object.position.z / 10} ${intersects[0].object.position.x / 10}`)
-                let pointed = this.game.whatsThere(intersects[0].object.position.z / 10, intersects[0].object.position.x / 10);
-                this.game.changeDisplayInfo(pointed)
-            } else {
-                this.lastRaycasted.object.material.color.set(0xffffff);
-                this.lastRaycasted = null;
-                this.panel.style.display = "none";
             }
         });
     }
@@ -56567,6 +56594,36 @@ module.exports = __webpack_require__.p + "b134fbaaa3e6db587190.tga";
 
 /***/ }),
 
+/***/ "./src/components/assets/models/buildings/factory/build.fbx":
+/*!******************************************************************!*\
+  !*** ./src/components/assets/models/buildings/factory/build.fbx ***!
+  \******************************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+module.exports = __webpack_require__.p + "e957dc2c765b05edde37.fbx";
+
+/***/ }),
+
+/***/ "./src/components/assets/models/buildings/factory/build_blue.tga":
+/*!***********************************************************************!*\
+  !*** ./src/components/assets/models/buildings/factory/build_blue.tga ***!
+  \***********************************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+module.exports = __webpack_require__.p + "72f41e9fc44d77dfe691.tga";
+
+/***/ }),
+
+/***/ "./src/components/assets/models/buildings/factory/build_red.tga":
+/*!**********************************************************************!*\
+  !*** ./src/components/assets/models/buildings/factory/build_red.tga ***!
+  \**********************************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+module.exports = __webpack_require__.p + "7dab5007e7a77338b158.tga";
+
+/***/ }),
+
 /***/ "./src/components/assets/models/buildings/mine/build.fbx":
 /*!***************************************************************!*\
   !*** ./src/components/assets/models/buildings/mine/build.fbx ***!
@@ -56587,6 +56644,16 @@ module.exports = __webpack_require__.p + "a934524d521df03f2e63.tga";
 
 /***/ }),
 
+/***/ "./src/components/assets/models/buildings/mine/build_red.tga":
+/*!*******************************************************************!*\
+  !*** ./src/components/assets/models/buildings/mine/build_red.tga ***!
+  \*******************************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+module.exports = __webpack_require__.p + "465cdd41cdcdedddb22c.tga";
+
+/***/ }),
+
 /***/ "./src/components/assets/models/env/rocks/moud/unit.fbx":
 /*!**************************************************************!*\
   !*** ./src/components/assets/models/env/rocks/moud/unit.fbx ***!
@@ -56594,6 +56661,66 @@ module.exports = __webpack_require__.p + "a934524d521df03f2e63.tga";
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 module.exports = __webpack_require__.p + "153a02f5c54664ff9167.fbx";
+
+/***/ }),
+
+/***/ "./src/components/assets/models/units/car/unit.fbx":
+/*!*********************************************************!*\
+  !*** ./src/components/assets/models/units/car/unit.fbx ***!
+  \*********************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+module.exports = __webpack_require__.p + "5a4bfe4ad5d86cc380a4.fbx";
+
+/***/ }),
+
+/***/ "./src/components/assets/models/units/car/unit_blue.tga":
+/*!**************************************************************!*\
+  !*** ./src/components/assets/models/units/car/unit_blue.tga ***!
+  \**************************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+module.exports = __webpack_require__.p + "d4cf2482886903ace598.tga";
+
+/***/ }),
+
+/***/ "./src/components/assets/models/units/car/unit_red.tga":
+/*!*************************************************************!*\
+  !*** ./src/components/assets/models/units/car/unit_red.tga ***!
+  \*************************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+module.exports = __webpack_require__.p + "a77ed0ba08899a72b71d.tga";
+
+/***/ }),
+
+/***/ "./src/components/assets/models/units/tank/unit.fbx":
+/*!**********************************************************!*\
+  !*** ./src/components/assets/models/units/tank/unit.fbx ***!
+  \**********************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+module.exports = __webpack_require__.p + "a706a4b5082624835807.fbx";
+
+/***/ }),
+
+/***/ "./src/components/assets/models/units/tank/unit_blue.tga":
+/*!***************************************************************!*\
+  !*** ./src/components/assets/models/units/tank/unit_blue.tga ***!
+  \***************************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+module.exports = __webpack_require__.p + "5ebcaf571500f1265f9a.tga";
+
+/***/ }),
+
+/***/ "./src/components/assets/models/units/tank/unit_red.tga":
+/*!**************************************************************!*\
+  !*** ./src/components/assets/models/units/tank/unit_red.tga ***!
+  \**************************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+module.exports = __webpack_require__.p + "fd3ea1f5d5ac467b32db.tga";
 
 /***/ }),
 
@@ -56646,7 +56773,7 @@ class BaseBlue extends three__WEBPACK_IMPORTED_MODULE_2__.Group {
 
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "default": () => (/* binding */ BaseBlue)
+/* harmony export */   "default": () => (/* binding */ BaseRed)
 /* harmony export */ });
 /* harmony import */ var three_examples_jsm_loaders_FBXLoader_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! three/examples/jsm/loaders/FBXLoader.js */ "./node_modules/three/examples/jsm/loaders/FBXLoader.js");
 /* harmony import */ var three_examples_jsm_loaders_TGALoader_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! three/examples/jsm/loaders/TGALoader.js */ "./node_modules/three/examples/jsm/loaders/TGALoader.js");
@@ -56659,7 +56786,7 @@ __webpack_require__.r(__webpack_exports__);
 
 
 
-class BaseBlue extends three__WEBPACK_IMPORTED_MODULE_2__.Group {
+class BaseRed extends three__WEBPACK_IMPORTED_MODULE_2__.Group {
     constructor() {
         super()
         const textureLoader = new three_examples_jsm_loaders_TGALoader_js__WEBPACK_IMPORTED_MODULE_3__.TGALoader();
@@ -56687,29 +56814,84 @@ class BaseBlue extends three__WEBPACK_IMPORTED_MODULE_2__.Group {
 
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "default": () => (/* binding */ Mine)
+/* harmony export */   "default": () => (/* binding */ Extractor)
 /* harmony export */ });
-/* harmony import */ var three_examples_jsm_loaders_FBXLoader_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! three/examples/jsm/loaders/FBXLoader.js */ "./node_modules/three/examples/jsm/loaders/FBXLoader.js");
-/* harmony import */ var three_examples_jsm_loaders_TGALoader_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! three/examples/jsm/loaders/TGALoader.js */ "./node_modules/three/examples/jsm/loaders/TGALoader.js");
-/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+/* harmony import */ var three_examples_jsm_loaders_FBXLoader_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! three/examples/jsm/loaders/FBXLoader.js */ "./node_modules/three/examples/jsm/loaders/FBXLoader.js");
+/* harmony import */ var three_examples_jsm_loaders_TGALoader_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! three/examples/jsm/loaders/TGALoader.js */ "./node_modules/three/examples/jsm/loaders/TGALoader.js");
+/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
 /* harmony import */ var _assets_models_buildings_mine_build_fbx__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../assets/models/buildings/mine/build.fbx */ "./src/components/assets/models/buildings/mine/build.fbx");
-/* harmony import */ var _assets_models_buildings_mine_build_blue_tga__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../assets/models/buildings/mine/build_blue.tga */ "./src/components/assets/models/buildings/mine/build_blue.tga");
+/* harmony import */ var _assets_models_buildings_mine_build_red_tga__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../assets/models/buildings/mine/build_red.tga */ "./src/components/assets/models/buildings/mine/build_red.tga");
+/* harmony import */ var _assets_models_buildings_mine_build_blue_tga__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../assets/models/buildings/mine/build_blue.tga */ "./src/components/assets/models/buildings/mine/build_blue.tga");
 
 
 
 
 
 
-class Mine extends three__WEBPACK_IMPORTED_MODULE_2__.Group {
-    constructor() {
+
+class Extractor extends three__WEBPACK_IMPORTED_MODULE_3__.Group {
+    constructor(player) {
         super()
-        const textureLoader = new three_examples_jsm_loaders_TGALoader_js__WEBPACK_IMPORTED_MODULE_3__.TGALoader();
-        let texture = textureLoader.load(_assets_models_buildings_mine_build_blue_tga__WEBPACK_IMPORTED_MODULE_1__);
-        const material = new three__WEBPACK_IMPORTED_MODULE_2__.MeshPhongMaterial({
+        const textureLoader = new three_examples_jsm_loaders_TGALoader_js__WEBPACK_IMPORTED_MODULE_4__.TGALoader();
+        let texture;
+        if (player == "Red") {
+            texture = textureLoader.load(_assets_models_buildings_mine_build_red_tga__WEBPACK_IMPORTED_MODULE_1__);
+        } else {
+            texture = textureLoader.load(_assets_models_buildings_mine_build_blue_tga__WEBPACK_IMPORTED_MODULE_2__);
+        }
+        const material = new three__WEBPACK_IMPORTED_MODULE_3__.MeshPhongMaterial({
             map: texture
         });
-        const loader = new three_examples_jsm_loaders_FBXLoader_js__WEBPACK_IMPORTED_MODULE_4__.FBXLoader();
+        const loader = new three_examples_jsm_loaders_FBXLoader_js__WEBPACK_IMPORTED_MODULE_5__.FBXLoader();
         loader.load(_assets_models_buildings_mine_build_fbx__WEBPACK_IMPORTED_MODULE_0__, (object) => {
+            object.children.forEach(element => {
+                element.material = material
+            })
+            this.add(object)
+        });
+    }
+}
+
+/***/ }),
+
+/***/ "./src/components/buildings/Factory.js":
+/*!*********************************************!*\
+  !*** ./src/components/buildings/Factory.js ***!
+  \*********************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (/* binding */ Factory)
+/* harmony export */ });
+/* harmony import */ var three_examples_jsm_loaders_FBXLoader_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! three/examples/jsm/loaders/FBXLoader.js */ "./node_modules/three/examples/jsm/loaders/FBXLoader.js");
+/* harmony import */ var three_examples_jsm_loaders_TGALoader_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! three/examples/jsm/loaders/TGALoader.js */ "./node_modules/three/examples/jsm/loaders/TGALoader.js");
+/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+/* harmony import */ var _assets_models_buildings_factory_build_fbx__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../assets/models/buildings/factory/build.fbx */ "./src/components/assets/models/buildings/factory/build.fbx");
+/* harmony import */ var _assets_models_buildings_factory_build_red_tga__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../assets/models/buildings/factory/build_red.tga */ "./src/components/assets/models/buildings/factory/build_red.tga");
+/* harmony import */ var _assets_models_buildings_factory_build_blue_tga__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../assets/models/buildings/factory/build_blue.tga */ "./src/components/assets/models/buildings/factory/build_blue.tga");
+
+
+
+
+
+
+
+class Factory extends three__WEBPACK_IMPORTED_MODULE_3__.Group {
+    constructor(player) {
+        super()
+        const textureLoader = new three_examples_jsm_loaders_TGALoader_js__WEBPACK_IMPORTED_MODULE_4__.TGALoader();
+        let texture;
+        if (player == "Red") {
+            texture = textureLoader.load(_assets_models_buildings_factory_build_red_tga__WEBPACK_IMPORTED_MODULE_1__);
+        } else {
+            texture = textureLoader.load(_assets_models_buildings_factory_build_blue_tga__WEBPACK_IMPORTED_MODULE_2__);
+        }
+        const material = new three__WEBPACK_IMPORTED_MODULE_3__.MeshPhongMaterial({
+            map: texture
+        });
+        const loader = new three_examples_jsm_loaders_FBXLoader_js__WEBPACK_IMPORTED_MODULE_5__.FBXLoader();
+        loader.load(_assets_models_buildings_factory_build_fbx__WEBPACK_IMPORTED_MODULE_0__, (object) => {
             object.children.forEach(element => {
                 element.material = material
             })
@@ -56811,10 +56993,21 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   "default": () => (/* binding */ Game)
 /* harmony export */ });
 /* harmony import */ var _buildings_Extractor__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../buildings/Extractor */ "./src/components/buildings/Extractor.js");
+/* harmony import */ var _buildings_Factory__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../buildings/Factory */ "./src/components/buildings/Factory.js");
+/* harmony import */ var _units_Car__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../units/Car */ "./src/components/units/Car.js");
+/* harmony import */ var _units_Tank__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ../units/Tank */ "./src/components/units/Tank.js");
+
+
+
 
 class Game {
     constructor(map, scene, modelMap) {
+        this.selected = null;
+        this.moves = false;
+        this.turn = "Red"
         this.player = "Red"
+        this.ore = 0;
+        this.gold = 100;
         this.scene = scene;
         this.raw = map;
         this.modelMap = modelMap
@@ -56840,7 +57033,8 @@ class Game {
                             owner: 'Red',
                             type: 'base',
                             i: i,
-                            j: j
+                            j: j,
+                            health: 500,
                         }
                         break
                     case 'baseBlue':
@@ -56850,7 +57044,8 @@ class Game {
                             owner: 'Blue',
                             type: 'base',
                             i: i,
-                            j: j
+                            j: j,
+                            health: 500,
                         }
                         break
                     case 'hill':
@@ -56872,6 +57067,7 @@ class Game {
                             i: i,
                             j: j
                         }
+                        break
                 }
             }
         }
@@ -56883,26 +57079,144 @@ class Game {
         document.getElementById("currentName").innerText = info.name;
         this.changeOptions(info)
     }
-    build(structure, info) {
-        switch (structure) {
-            case 'extractor':
-                console.log(this.modelMap.modelMap[info.i][info.j])
-                this.map[info.i][info.j].owner = this.player;
-                this.modelMap.remove(this.modelMap[info.i][info.j])
-                let square = new _buildings_Extractor__WEBPACK_IMPORTED_MODULE_0__.default();
-                // this.scene.add(square);
-                // this.modelMap[info.i][info.j]
-                break
+    train(unit, info) {
+        let canTrain = false;
+        let unitCord = {
+            i: null,
+            j: null
         }
+        for (let i = info.i - 1; i < info.i + 2; i++) {
+            for (let j = info.j - 1; j < info.j + 2; j++) {
+                if (!canTrain) {
+                    if (this.map[i] !== undefined) {
+                        if (this.map[i][j] !== undefined) {
+                            if (!this.map[i][j].occupied) {
+                                canTrain = true;
+                                unitCord.i = i;
+                                unitCord.j = j;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (canTrain) {
+            let square;
+            switch (unit) {
+                case 'car':
+                    //if (this.gold >= 150) {
+                    if (true) {
+                        this.map[unitCord.i][unitCord.j].owner = this.player;
+                        this.map[unitCord.i][unitCord.j].name = 'Car';
+                        this.map[unitCord.i][unitCord.j].occupied = true;
+                        this.map[unitCord.i][unitCord.j].type = 'car';
+                        this.map[unitCord.i][unitCord.j].health = 150;
+                        this.map[unitCord.i][unitCord.j].moves = 2;
+                        //this.modelMap.remove(this.modelMap.modelMap[unitCord.i][unitCord.j])
+                        square = new _units_Car__WEBPACK_IMPORTED_MODULE_2__.default(this.player);
+                        square.position.z = 10 * unitCord.i;
+                        square.position.x = 10 * unitCord.j;
+                        this.modelMap.add(square);
+                        this.modelMap.modelMap[unitCord.i][unitCord.j] = square;
+                        console.log(this.map)
+                        this.gold -= 150
+                    } else {}
+                    break
+                case 'tank':
+                    //if (this.gold >= 0 && this.ore >= 0) {
+                    if (true) {
+                        this.map[unitCord.i][unitCord.j].owner = this.player;
+                        this.map[unitCord.i][unitCord.j].name = 'Tank';
+                        this.map[unitCord.i][unitCord.j].occupied = true;
+                        this.map[unitCord.i][unitCord.j].type = 'tank';
+                        this.map[unitCord.i][unitCord.j].health = 300;
+                        this.map[unitCord.i][unitCord.j].moves = 1;
+                        //this.modelMap.remove(this.modelMap.modelMap[unitCord.i][unitCord.j])
+                        square = new _units_Tank__WEBPACK_IMPORTED_MODULE_3__.default(this.player);
+                        square.position.z = 10 * unitCord.i;
+                        square.position.x = 10 * unitCord.j;
+                        this.modelMap.add(square);
+                        this.modelMap.modelMap[unitCord.i][unitCord.j] = square;
+                        console.log(this.map)
+                        this.gold -= 200;
+                        this.ore -= 100;
+                    } else {}
+                    break
+            }
+        } else {
+            alert("no space to train unit")
+        }
+        this.changeOptions(info)
+    }
+    build(structure, info) {
+        let canBuild = false;
+        for (let i = info.i - 2; i < info.i + 3; i++) {
+            for (let j = info.j - 2; j < info.j + 3; j++) {
+                if (this.map[i] !== undefined) {
+                    if (this.map[i][j] !== undefined) {
+                        if (this.map[i][j].owner == this.player) {
+                            canBuild = true;
+                        }
+                    }
+                }
+            }
+        }
+        if (canBuild) {
+            let square;
+            switch (structure) {
+                case 'extractor':
+                    //console.log(this.modelMap.modelMap[info.i][info.j])
+                    if (this.gold >= 100) {
+                        this.map[info.i][info.j].owner = this.player;
+                        this.map[info.i][info.j].name = 'Extractor';
+                        this.map[info.i][info.j].occupied = true;
+                        this.map[info.i][info.j].health = 100;
+                        this.modelMap.remove(this.modelMap.modelMap[info.i][info.j])
+                        square = new _buildings_Extractor__WEBPACK_IMPORTED_MODULE_0__.default(this.player);
+                        square.position.z = 10 * info.i;
+                        square.position.x = 10 * info.j;
+                        this.modelMap.add(square);
+                        this.modelMap.modelMap[info.i][info.j] = square;
+                        console.log(this.map)
+                        this.gold -= 100
+                    } else {
+                        alert("not enough resources")
+                    }
+                    break
+                case 'factory':
+                    //if (this.gold >= 150 && this.ore >= 50) {
+                    if (true) {
+                        this.map[info.i][info.j].owner = this.player;
+                        this.map[info.i][info.j].name = 'Factory';
+                        this.map[info.i][info.j].type = 'factory';
+                        this.map[info.i][info.j].occupied = true;
+                        this.map[info.i][info.j].health = 250;
+                        this.modelMap.remove(this.modelMap.modelMap[info.i][info.j])
+                        square = new _buildings_Factory__WEBPACK_IMPORTED_MODULE_1__.default(this.player);
+                        square.position.z = 10 * info.i;
+                        square.position.x = 10 * info.j;
+                        this.modelMap.add(square);
+                        this.modelMap.modelMap[info.i][info.j] = square;
+                        console.log(this.map)
+                        this.gold -= 150
+                        this.ore -= 50
+                    } else {}
+                    break
+            }
+        } else {
+            alert("cant build here")
+        }
+        this.changeOptions(info)
     }
     changeOptions(info) {
         let tab = document.getElementById("options")
         switch (info.type) {
             case 'base':
+                tab.innerHTML = "";
                 if (info.owner == this.player) {
-                    tab.innerHTML = "<p>siema mordo</p>"
+                    tab.innerHTML = `<p>Your Base</p><p>Health ${info.health}/500</p>`
                 } else {
-                    tab.innerHTML = "<p>nie twoja baza kozaku</p>"
+                    tab.innerHTML = `<p>${info.owner}'s Base</p><p>Health ${info.health}/500</p>`
                 }
                 break
             case 'ore':
@@ -56912,18 +57226,224 @@ class Game {
                     btn.innerText = "Build Extractor"
                     btn.addEventListener("click", (e) => {
                         this.build('extractor', info)
+                        this.updateResc()
+                    });
+                    tab.appendChild(btn)
+                } else {
+                    tab.innerHTML = `<p>Occupied by ${info.owner}</p><p>Health ${info.health}/100</p>`
+                }
+                break
+            case 'hill':
+                tab.innerHTML = "<p>High hill</p>"
+                break
+            case 'factory':
+                tab.innerHTML = "";
+                if (info.owner == this.player) {
+                    let btn1 = document.createElement("button")
+                    btn1.innerText = "Build Car"
+                    btn1.addEventListener("click", (e) => {
+                        this.train('car', info)
+                        this.updateResc()
+                    });
+                    tab.appendChild(btn1);
+                    let btn2 = document.createElement("button")
+                    btn2.innerText = "Build Tank";
+                    btn2.addEventListener("click", (e) => {
+                        this.train('tank', info)
+                        this.updateResc()
+                    });
+                    tab.appendChild(btn2);
+                    let infomator = document.createElement("p");
+                    infomator.innerText = `Health ${info.health}/250`
+                } else {
+                    tab.innerHTML = `<p>Occupied by ${info.owner}</p><p>Health ${info.health}/250</p>`
+                }
+                break
+            case null:
+                tab.innerHTML = "";
+                if (info.owner == null) {
+                    let btn = document.createElement("button")
+                    btn.innerText = "Build Factory"
+                    btn.addEventListener("click", (e) => {
+                        this.build('factory', info)
+                        this.updateResc()
                     });
                     tab.appendChild(btn)
                 } else {
                     tab.innerHTML = `<p>Occupied by ${info.owner}</p>`
                 }
                 break
-            case 'hill':
-                tab.innerHTML = "<p>High hill</p>"
-                break
-            case null:
+            case 'car':
                 tab.innerHTML = "";
+                if (info.owner == this.player) {
+                    let btn1 = document.createElement("button");
+                    btn1.id = "moveOption";
+                    let infomator = document.createElement("p");
+                    let movesCount = document.createElement("p")
+                    movesCount.innerText = `Moves ${info.moves}/2`
+                    infomator.innerText = `Health ${info.health}/150`;
+                    btn1.innerText = "Move"
+                    btn1.addEventListener("click", (e) => {
+                        if (info.moves != 0) {
+                            if (this.moves) {
+                                this.moves = false;
+                                btn1.style.backgroundColor = ""
+                                btn1.style.color = ""
+                                this.selected = null;
+                            } else {
+                                this.moves = true;
+                                btn1.style.backgroundColor = "red"
+                                btn1.style.color = "white"
+                                this.selected = info;
+                            }
+                        } else {
+                            alert("no moves avalible for that unit")
+                        }
+                    });
+
+                    tab.appendChild(btn1);
+                    tab.appendChild(infomator);
+                    tab.appendChild(movesCount);
+                } else {
+                    tab.innerHTML = `<p>${info.owner}'s Car</p><p>Health ${info.health}/150</p>`
+                }
                 break
+            case 'tank':
+                tab.innerHTML = "";
+                if (info.owner == this.player) {
+                    let btn1 = document.createElement("button");
+                    btn1.id = "moveOption";
+                    let infomator = document.createElement("p");
+                    infomator.innerText = `Health ${info.health}/300`;
+                    let movesCount = document.createElement("p")
+                    movesCount.innerText = `Moves ${info.moves}/1`
+                    btn1.innerText = "Move"
+                    btn1.addEventListener("click", (e) => {
+                        if (info.moves != 0) {
+                            if (this.moves) {
+                                this.moves = false;
+                                btn1.style.backgroundColor = ""
+                                btn1.style.color = ""
+                                this.selected = null;
+                            } else {
+                                this.moves = true;
+                                btn1.style.backgroundColor = "red"
+                                btn1.style.color = "white"
+                                this.selected = info;
+                            }
+                        } else {
+                            alert("no moves avalible for that unit")
+                        }
+                    });
+
+                    tab.appendChild(btn1);
+                    tab.appendChild(infomator);
+                    tab.appendChild(movesCount);
+                } else {
+                    tab.innerHTML = `<p>${info.owner}'s Tank</p><p>Health ${info.health}/300</p>`
+                }
+                break
+        }
+    }
+    updateResc() {
+        document.getElementById("resources").innerHTML = `<p>Gold: ${this.gold}, Ore: ${this.ore}</p>`
+    }
+    skipTurn() {
+        if (this.turn == this.player) {
+            this.turn = "Blue";
+        } else {
+            this.turn = this.player;
+            this.gold += 100;
+            let extractors = 0;
+            for (let i = 0; i < this.map.length; i++) {
+                for (let j = 0; j < this.map[i].length; j++) {
+                    if (this.map[i][j].name == "Extractor" && this.map[i][j].owner == this.player) {
+                        extractors += 1;
+                    }
+                }
+            }
+            this.ore += 50 * extractors;
+            this.updateResc();
+        }
+        console.log(this.turn);
+    }
+    move(direction, info) {
+        // console.log(direction)
+        // console.log(info)
+        // console.log(this.modelMap.modelMap);
+        let canMove = false;
+        let attacking = false;
+        for (let i = info.i - 1; i < info.i + 2; i++) {
+            for (let j = info.j - 1; j < info.j + 2; j++) {
+                if (i == direction.i && j == direction.j) {
+                    canMove = true;
+                }
+            }
+        }
+        if (direction.occupied) {
+            if (direction.owner != this.player && direction.owner != null) {
+                attacking = true;
+            } else {
+                canMove = false
+            }
+        }
+        if (canMove) {
+            if (attacking) {
+                // console.log("atacking:")
+                // console.log(info)
+                switch (info.type) {
+                    case 'car':
+                        direction.health -= 25;
+                        break
+                    case 'tank':
+                        direction.health -= 50;
+                        break
+                }
+                info.moves -= 1;
+                this.moves = false;
+                document.getElementById("moveOption").style.backgroundColor = ""
+                document.getElementById("moveOption").style.color = ""
+                console.log(direction)
+            } else {
+                // square.position.z = 10 * info.i;
+                // square.position.x = 10 * info.j;
+                //this.modelMap.modelMap[direction.i][direction.j]
+                let moving = this.modelMap.modelMap[info.i][info.j]
+                this.modelMap.remove(this.modelMap.modelMap[info.i][info.j])
+                moving.position.z = 10 * direction.i;
+                moving.position.x = 10 * direction.j;
+                this.modelMap.add(moving);
+                this.modelMap.modelMap[direction.i][direction.j] = moving;
+                this.modelMap.modelMap[info.i][info.j] = null;
+                let movingObj = this.map[info.i][info.j]
+                this.map[info.i][info.j] = {
+                    name: 'Plain',
+                    occupied: false,
+                    owner: null,
+                    type: null,
+                    i: movingObj.i,
+                    j: movingObj.j
+                }
+                this.map[direction.i][direction.j] = {
+                    name: movingObj.name,
+                    occupied: movingObj.occupied,
+                    owner: movingObj.owner,
+                    type: movingObj.type,
+                    i: direction.i,
+                    j: direction.j,
+                    health: movingObj.health,
+                    moves: movingObj.moves // -1
+                }
+                this.selected = null;
+                this.moves = false;
+                document.getElementById("moveOption").style.backgroundColor = ""
+                document.getElementById("moveOption").style.color = ""
+                //console.log(this.map)
+                this.changeDisplayInfo(this.map[info.i][info.j])
+                console.log(this.map[info.i][info.j])
+            }
+        } else {
+            alert("invalid movement")
         }
     }
 }
@@ -56950,6 +57470,102 @@ class Plain extends three__WEBPACK_IMPORTED_MODULE_1__.Mesh {
         const textures = new three__WEBPACK_IMPORTED_MODULE_1__.TextureLoader().load(_assets_tiles_plain_png__WEBPACK_IMPORTED_MODULE_0__.default);
         super(new three__WEBPACK_IMPORTED_MODULE_1__.BoxGeometry(10, 10, 10), new three__WEBPACK_IMPORTED_MODULE_1__.MeshPhongMaterial({ map: textures }));
         //map: textures
+    }
+}
+
+/***/ }),
+
+/***/ "./src/components/units/Car.js":
+/*!*************************************!*\
+  !*** ./src/components/units/Car.js ***!
+  \*************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (/* binding */ Car)
+/* harmony export */ });
+/* harmony import */ var three_examples_jsm_loaders_FBXLoader_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! three/examples/jsm/loaders/FBXLoader.js */ "./node_modules/three/examples/jsm/loaders/FBXLoader.js");
+/* harmony import */ var three_examples_jsm_loaders_TGALoader_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! three/examples/jsm/loaders/TGALoader.js */ "./node_modules/three/examples/jsm/loaders/TGALoader.js");
+/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+/* harmony import */ var _assets_models_units_car_unit_fbx__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../assets/models/units/car/unit.fbx */ "./src/components/assets/models/units/car/unit.fbx");
+/* harmony import */ var _assets_models_units_car_unit_red_tga__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../assets/models/units/car/unit_red.tga */ "./src/components/assets/models/units/car/unit_red.tga");
+/* harmony import */ var _assets_models_units_car_unit_blue_tga__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../assets/models/units/car/unit_blue.tga */ "./src/components/assets/models/units/car/unit_blue.tga");
+
+
+
+
+
+
+
+class Car extends three__WEBPACK_IMPORTED_MODULE_3__.Group {
+    constructor(player) {
+        super()
+        const textureLoader = new three_examples_jsm_loaders_TGALoader_js__WEBPACK_IMPORTED_MODULE_4__.TGALoader();
+        let texture;
+        if (player == "Red") {
+            texture = textureLoader.load(_assets_models_units_car_unit_red_tga__WEBPACK_IMPORTED_MODULE_1__);
+        } else {
+            texture = textureLoader.load(_assets_models_units_car_unit_blue_tga__WEBPACK_IMPORTED_MODULE_2__);
+        }
+        const material = new three__WEBPACK_IMPORTED_MODULE_3__.MeshPhongMaterial({
+            map: texture
+        });
+        const loader = new three_examples_jsm_loaders_FBXLoader_js__WEBPACK_IMPORTED_MODULE_5__.FBXLoader();
+        loader.load(_assets_models_units_car_unit_fbx__WEBPACK_IMPORTED_MODULE_0__, (object) => {
+            object.children.forEach(element => {
+                element.material = material
+            })
+            this.add(object)
+        });
+    }
+}
+
+/***/ }),
+
+/***/ "./src/components/units/Tank.js":
+/*!**************************************!*\
+  !*** ./src/components/units/Tank.js ***!
+  \**************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (/* binding */ Tank)
+/* harmony export */ });
+/* harmony import */ var three_examples_jsm_loaders_FBXLoader_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! three/examples/jsm/loaders/FBXLoader.js */ "./node_modules/three/examples/jsm/loaders/FBXLoader.js");
+/* harmony import */ var three_examples_jsm_loaders_TGALoader_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! three/examples/jsm/loaders/TGALoader.js */ "./node_modules/three/examples/jsm/loaders/TGALoader.js");
+/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+/* harmony import */ var _assets_models_units_tank_unit_fbx__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../assets/models/units/tank/unit.fbx */ "./src/components/assets/models/units/tank/unit.fbx");
+/* harmony import */ var _assets_models_units_tank_unit_red_tga__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../assets/models/units/tank/unit_red.tga */ "./src/components/assets/models/units/tank/unit_red.tga");
+/* harmony import */ var _assets_models_units_tank_unit_blue_tga__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../assets/models/units/tank/unit_blue.tga */ "./src/components/assets/models/units/tank/unit_blue.tga");
+
+
+
+
+
+
+
+class Tank extends three__WEBPACK_IMPORTED_MODULE_3__.Group {
+    constructor(player) {
+        super()
+        const textureLoader = new three_examples_jsm_loaders_TGALoader_js__WEBPACK_IMPORTED_MODULE_4__.TGALoader();
+        let texture;
+        if (player == "Red") {
+            texture = textureLoader.load(_assets_models_units_tank_unit_red_tga__WEBPACK_IMPORTED_MODULE_1__);
+        } else {
+            texture = textureLoader.load(_assets_models_units_tank_unit_blue_tga__WEBPACK_IMPORTED_MODULE_2__);
+        }
+        const material = new three__WEBPACK_IMPORTED_MODULE_3__.MeshPhongMaterial({
+            map: texture
+        });
+        const loader = new three_examples_jsm_loaders_FBXLoader_js__WEBPACK_IMPORTED_MODULE_5__.FBXLoader();
+        loader.load(_assets_models_units_tank_unit_fbx__WEBPACK_IMPORTED_MODULE_0__, (object) => {
+            object.children.forEach(element => {
+                element.material = material
+            })
+            this.add(object)
+        });
     }
 }
 
