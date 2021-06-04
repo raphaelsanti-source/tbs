@@ -57373,12 +57373,24 @@ class Game {
         // console.log(this.modelMap.modelMap);
         let canMove = false;
         let attacking = false;
-        for (let i = info.i - 1; i < info.i + 2; i++) {
-            for (let j = info.j - 1; j < info.j + 2; j++) {
-                if (i == direction.i && j == direction.j) {
-                    canMove = true;
-                }
-            }
+        // for (let i = info.i - 1; i < info.i + 2; i++) {
+        //     for (let j = info.j - 1; j < info.j + 2; j++) {
+        //         if (i == direction.i && j == direction.j) {
+        //             canMove = true;
+        //         }
+        //     }
+        // }
+        if (direction.i - info.i == 1 && direction.j == info.j) {
+            canMove = true;
+        }
+        if (direction.i - info.i == -1 && direction.j == info.j) {
+            canMove = true;
+        }
+        if (direction.j - info.j == -1 && direction.i == info.i) {
+            canMove = true;
+        }
+        if (direction.j - info.j == 1 && direction.i == info.i) {
+            canMove = true;
         }
         if (direction.occupied) {
             if (direction.owner != this.player && direction.owner != null) {
